@@ -30,6 +30,7 @@ public class StudentMapperTest {
     }
 
     /**
+     *  一级缓存 <br/>
      * 同一sqlSession, 第一次查询走DB, 后续走缓存;
      * <setting name="localCacheScope" value="SESSION"/>
      * <setting name="cacheEnabled" value="true"/>
@@ -48,6 +49,26 @@ public class StudentMapperTest {
     }
 
     /**
+     * 一级缓存 <br/>
+     * 两次不同会话，缓存不共享
+     * @throws Exception
+     */
+    @Test
+    public void testLocalCacheWithDiffSqlSession() throws Exception {
+        SqlSession sqlSession1 = factory.openSession(true);
+        SqlSession sqlSession2 = factory.openSession(true);
+        StudentMapper studentMapper1 = sqlSession1.getMapper(StudentMapper.class);
+        StudentMapper studentMapper2 = sqlSession2.getMapper(StudentMapper.class);
+
+        System.out.println(studentMapper1.getStudentById(1));
+        System.out.println(studentMapper2.getStudentById(1));
+
+        sqlSession1.close();
+        sqlSession2.close();
+    }
+
+    /**
+     * 一级缓存 <br/>
      * 同一SqlSession, 第一次查询走DB, 第二次走缓存, 第三次执行更新,此时缓存失效, 因此后续查询(第4次)走DB
      * <setting name="localCacheScope" value="SESSION"/>
      * <setting name="cacheEnabled" value="true"/>
@@ -67,6 +88,7 @@ public class StudentMapperTest {
     }
 
     /**
+     * 一级缓存 <br/>
      * 开启两个SqlSession, 操作同一张表 <br/>
      * 会话1先查询数据，并加入会话1缓存; （id=1, name=点点） <br/>
      * 会话2更新id=1的数据, 点点->小岑;  <br/>
@@ -106,6 +128,7 @@ public class StudentMapperTest {
     }
 
     /**
+     * 二级缓存 <br/>
      * 使用自动事务,没有调用commit, 二级缓存不生效 <br/>
      * 两次查询均从DB查询 <br/>
      *  <setting name="localCacheScope" value="SESSION"/>
@@ -126,6 +149,7 @@ public class StudentMapperTest {
     }
 
     /**
+     * 二级缓存 <br/>
      *  使用自动事务，有使用commit，信息可以被缓存 <br/>
      *  会话1查询数据,并commit, 数据被缓存, <br/>
      *  会话2查询时，走缓存。<br/>
@@ -148,6 +172,7 @@ public class StudentMapperTest {
     }
 
     /**
+     * 二级缓存 <br/>
      *  会话1查询数据并commit，数据被缓存；<br/>
      *  会话2查询数据时，使用缓存 <br/>
      *  会话3修改数据 <br/>
@@ -184,6 +209,7 @@ public class StudentMapperTest {
     }
 
     /**
+     *  二级缓存 <br/>
      *  由于MyBatis的二级缓存是基于namespace的，多表查询语句所在的namspace无法感应到其他namespace中的语句对多表查询中涉及的表进行的修改，引发脏数据问题 <br/>
      *  本测试用例，mapper1，mapper2属于不同命名空间，因此缓存空间也是不同的 <br/>
      *  会话1，studentMapper读取student, class表，并缓存 <br/>
@@ -224,8 +250,9 @@ public class StudentMapperTest {
     }
 
     /**
+     * 二级缓存 <br/>
      *  由于MyBatis的二级缓存是基于namespace的，多表查询语句所在的namspace无法感应到其他namespace中的语句对多表查询中涉及的表进行的修改，<br/>
-     *  引发脏数据问题 本测试用例，mapper1，mapper2属于不同命名空间，因此缓存空间也是不同的 <br/>
+     *  调整命名空间，使这两个Mapper位于同一个缓存空间，这样其中一个Mapper更新时，也会触发另一个Mapper的缓存失效 <br/>
      *  会话1，studentMapper读取student, class表，并缓存 <br/>
      *  会话2, 读取缓存数据 <br/>
      *  ClassMapper, 更新班级信息 ，由于studentMapper/classMapper属于同一个缓存空间，此时执行了更新，旧的缓存数据将失效<br/>
@@ -257,7 +284,7 @@ public class StudentMapperTest {
         s3.commit();
         System.out.println("ClassMapper更新数据完成\n");
 
-        System.out.println("会话2读取数据: " + m2.getStudentByIdWithClassInfo(1)); //脏数据，无法感知到classMapper的改动
+        System.out.println("会话2读取数据: " + m2.getStudentByIdWithClassInfo(1)); //因为是同一个缓存空间，感知到classMapper的改动，缓存失效，取DB结果
 
         // 恢复为原始数据状态，不影响其他单元测试
         classMapper.updateClassName("一班", 1);
