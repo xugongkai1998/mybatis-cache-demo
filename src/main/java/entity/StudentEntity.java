@@ -55,7 +55,7 @@ public class StudentEntity implements Serializable {
 		sb.append(", name='").append(name).append('\'');
 		sb.append(", age=").append(age);
 		sb.append(", className='").append(className).append('\'');
-		sb.append('}');
+		sb.append('}').append('\n');
 		return sb.toString();
 	}
 }
